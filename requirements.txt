@@ -1,0 +1,7 @@
+# Python 의존성 — Phase3 최종 산출물(docx) 생성용.
+# 설치:  pip install -r requirements.txt
+#
+# (Playwright 브라우저 MCP는 .mcp.json 설정에 따라 npx 가 자동 설치하므로 여기 없음.
+#  Node.js/npx 는 사전 설치 필요 — docs/setup.md 참조.)
+
+python-docx>=1.1.0

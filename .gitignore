@@ -25,3 +25,7 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# MS Office 임시/잠금 파일(문서가 열려 있을 때 생성)
+~$*
+*.tmp
