@@ -1,0 +1,16 @@
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write(data/**)",
+      "Write(output/**)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.browser-profile/**)"
+    ]
+  }
+}

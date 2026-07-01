@@ -1,0 +1,27 @@
+# 작업 자료 / 산출물 — 개인 계정으로 수집한 자료·저작물이므로 커밋 금지
+/data/
+/output/
+
+# 브라우저 로그인 세션(쿠키 포함) — 절대 커밋 금지
+/.browser-profile/
+
+# Playwright MCP 세션 아티팩트(콘솔 로그·페이지 스냅샷) — 개인정보·수집물 포함이라 커밋 금지
+/.playwright-mcp/
+
+# 개인용 Claude 설정(권한 등) — 커밋하지 않음
+.claude/settings.local.json
+
+# 비밀값
+.env
+.env.*
+*.local
+
+# 의존성 / 캐시
+node_modules/
+__pycache__/
+.venv/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
