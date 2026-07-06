@@ -25,6 +25,12 @@ TOP_N = int(sys.argv[2]) if len(sys.argv) > 2 else 30
 BASE = os.path.join(ROOT, "data", "cases", SLUG)
 TEMPLATE = os.path.join(ROOT, ".claude", "style_case_research.docx")
 OUTDIR = os.path.join(ROOT, "output"); os.makedirs(OUTDIR, exist_ok=True)
+# 최종본(final docx) 저장 위치: 환경변수 RESEARCH_OUTPUT_DIR가 있으면 그곳, 없으면 repo output/.
+# (사용자 규칙: 최종 결과물은 iCloud의 research_output에 모은다 — .claude/settings.local.json의 env로 주입.)
+# 백업본·_final_ranking.json 등 작업 산출물은 항상 repo output/·data/에 남긴다.
+FINAL_OUTDIR = (os.environ.get("RESEARCH_OUTPUT_DIR") or "").strip() or OUTDIR
+try: os.makedirs(FINAL_OUTDIR, exist_ok=True)
+except Exception: FINAL_OUTDIR = OUTDIR
 
 # ---- url map ----
 url_by_case = {}
@@ -125,8 +131,8 @@ if refined:
     comp = lambda r: (r.get("fit", 0) or 0) + court_bonus(r.get("court")) + conf_bonus(r.get("확정여부"))
     with io.open(os.path.join(BASE, "_final_ranking.json"), "w", encoding="utf-8") as f:
         json.dump([{"rank": i+1, "composite": comp(r), "url": url_for(r), **r} for i, r in enumerate(sorted(refined, key=lambda r: -comp(r)))], f, ensure_ascii=False, indent=1)
-    nf, nf_path = build(refined, comp, TOP_N, os.path.join(OUTDIR, "%s_판례리서치_최종.docx" % SLUG), rich=True)
-    print("최종본:", nf, "행 (상위", TOP_N, ") →", os.path.basename(nf_path))
+    nf, nf_path = build(refined, comp, TOP_N, os.path.join(FINAL_OUTDIR, "%s_판례리서치_최종.docx" % SLUG), rich=True)
+    print("최종본:", nf, "행 (상위", TOP_N, ") →", nf_path)
 # 백업본(전체 부합)
 matched = [r for r in dedupe(load("analysis"), "score") if r.get("match")]
 nb, nb_path = build(matched, lambda r: (r.get("score", 0) or 0), 10**6, os.path.join(OUTDIR, "%s_판례리서치.docx" % SLUG), rich=False)
