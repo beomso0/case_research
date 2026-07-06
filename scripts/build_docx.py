@@ -14,6 +14,11 @@ import json, io, os, glob, re, sys
 from docx import Document
 from docx.oxml.shared import OxmlElement, qn
 
+# Windows 콘솔 stdout이 cp949면 ™·→·✅·— 등 특수문자를 print할 때 UnicodeEncodeError(Exit 1)로 죽는다 → UTF-8 강제.
+for _s in (sys.stdout, sys.stderr):
+    try: _s.reconfigure(encoding="utf-8")
+    except Exception: pass
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SLUG = sys.argv[1] if len(sys.argv) > 1 else "결과"
 TOP_N = int(sys.argv[2]) if len(sys.argv) > 2 else 30
@@ -80,6 +85,23 @@ def add_rich(cell, text):
             if not seg: continue
             r = p.add_run(seg[2:-2] if seg.startswith("**") else seg); r.bold = seg.startswith("**")
 
+def safe_save(doc, out):
+    """대상 docx가 Word로 열려 있거나 iCloud 동기화로 잠겨(PermissionError) 있으면 _v2, _v3… 대체 경로로 저장."""
+    try:
+        doc.save(out); return out
+    except PermissionError:
+        base, ext = os.path.splitext(out)
+        for i in range(2, 20):
+            alt = "%s_v%d%s" % (base, i, ext)
+            try:
+                doc.save(alt)
+                sys.stderr.write("[경고] %s 잠김(열려 있음/동기화 중) → %s 로 저장. Word 닫고 재실행하면 원본 갱신.\n"
+                                 % (os.path.basename(out), os.path.basename(alt)))
+                return alt
+            except PermissionError:
+                continue
+        raise
+
 def build(rows, sortkey, n, out, rich):
     doc = Document(TEMPLATE); t = doc.tables[0]
     for row in list(t.rows[1:]): row._element.getparent().remove(row._element)
@@ -95,7 +117,7 @@ def build(rows, sortkey, n, out, rich):
             mu = (r.get("내용_무죄부분") or "").strip(); yu = (r.get("내용_유죄부분") or "").strip()
             c[3].text = ("[무죄 부분] " + mu + ("\n\n[유죄 부분] " + yu if yu else "")) if mu else (r.get("reason") or "")
         c[4].text = r.get("비고") or ""
-    doc.save(out); return len(t.rows) - 1
+    saved = safe_save(doc, out); return len(t.rows) - 1, saved
 
 # 최종본(정밀 재평가 refined/ 있으면 그걸로, 없으면 analysis/)
 refined = dedupe(load("refined"), "fit")
@@ -103,9 +125,9 @@ if refined:
     comp = lambda r: (r.get("fit", 0) or 0) + court_bonus(r.get("court")) + conf_bonus(r.get("확정여부"))
     with io.open(os.path.join(BASE, "_final_ranking.json"), "w", encoding="utf-8") as f:
         json.dump([{"rank": i+1, "composite": comp(r), "url": url_for(r), **r} for i, r in enumerate(sorted(refined, key=lambda r: -comp(r)))], f, ensure_ascii=False, indent=1)
-    nf = build(refined, comp, TOP_N, os.path.join(OUTDIR, "%s_판례리서치_최종.docx" % SLUG), rich=True)
-    print("최종본:", nf, "행 (상위", TOP_N, ")")
+    nf, nf_path = build(refined, comp, TOP_N, os.path.join(OUTDIR, "%s_판례리서치_최종.docx" % SLUG), rich=True)
+    print("최종본:", nf, "행 (상위", TOP_N, ") →", os.path.basename(nf_path))
 # 백업본(전체 부합)
 matched = [r for r in dedupe(load("analysis"), "score") if r.get("match")]
-nb = build(matched, lambda r: (r.get("score", 0) or 0), 10**6, os.path.join(OUTDIR, "%s_판례리서치.docx" % SLUG), rich=False)
-print("백업본(전체 부합):", nb, "행")
+nb, nb_path = build(matched, lambda r: (r.get("score", 0) or 0), 10**6, os.path.join(OUTDIR, "%s_판례리서치.docx" % SLUG), rich=False)
+print("백업본(전체 부합):", nb, "행 →", os.path.basename(nb_path))
